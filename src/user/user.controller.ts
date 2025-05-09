@@ -3,6 +3,7 @@ import { UsersService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './schemas/user.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { EmailVerificationDto } from './dto/email-verification.dto';
 
 @Controller('users')
 export class UsersController {
@@ -18,9 +19,18 @@ export class UsersController {
     return await this.userService.findOne(uuid);
   }
 
-  @Post()
-  async create(@Body() createUserDto: CreateUserDto): Promise<User> {
+  @Post('register')
+  async register(
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<{ message: string }> {
     return await this.userService.create(createUserDto);
+  }
+
+  @Post('verify-email')
+  async verfifyEmail(
+    @Body() emailVerificationDto: EmailVerificationDto,
+  ): Promise<{ message: string }> {
+    return await this.userService.verifyEmail(emailVerificationDto);
   }
 
   @Patch(':uuid')
@@ -31,5 +41,3 @@ export class UsersController {
     return await this.userService.update(uuid, updateUserDto);
   }
 }
-
-// TODO: Seguir haciendo el controller
