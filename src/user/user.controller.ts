@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './schemas/user.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailVerificationDto } from './dto/email-verification.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('users')
 export class UsersController {
@@ -31,6 +32,12 @@ export class UsersController {
     @Body() emailVerificationDto: EmailVerificationDto,
   ): Promise<{ message: string }> {
     return await this.userService.verifyEmail(emailVerificationDto);
+  }
+
+  @Throttle({ default: { limit: 1, ttl: 120 } })
+  @Post('resend-verification-code')
+  async resendVerificationCode(@Body() body: { email: string }) {
+    return this.userService.resendVerificationCode(body.email);
   }
 
   @Patch(':uuid')
