@@ -14,6 +14,7 @@ import { EmailVerificationDto } from './dto/email-verification.dto';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { VerificationService } from './verification.service';
 import { getConstants } from 'src/common/constants';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -45,10 +46,16 @@ export class UsersService implements OnModuleInit {
     return user;
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+    return await this.userModel.findOne({email}).exec();
+  }
+
   async create(dto: CreateUserDto): Promise<{ message: string }> {
     const newUser = new this.userModel(dto);
 
     try {
+      newUser.password = await bcrypt.hash(dto.password, 10);
+
       await newUser.save();
     } catch (e) {
       if (e.code === 11000) {
