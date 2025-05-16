@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { EmailService } from '../mailer/email.service';
@@ -20,7 +20,7 @@ export class VerificationService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async sendAndSaveVerificationCode(user: User) {
+  async sendAndSaveEmailVerificationCode(user: User) {
     const code = this.generateVerificationCode();
     const hashed = await bcrypt.hash(code, 10);
     const expiration = new Date(
@@ -31,25 +31,53 @@ export class VerificationService {
       emailVerificationCode: hashed,
       emailVerificationCodeExpiresAt: expiration,
       emailVerificationAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
-      lastVerificationRequestAt: new Date(),
+      lastEmailVerificationRequestAt: new Date(),
     });
 
     await user.save();
     await this.emailService.sendVerificationEmail(user.email, code);
   }
 
-  async validateCode(code: string, user: User): Promise<boolean> {
+  async sendAndSavePasswordResetCode(user: User) {
+    const code = this.generateVerificationCode();
+    const hashed = await bcrypt.hash(code, 10);
+    const expiration = new Date(
+      Date.now() + this.constants.VERIFICATION_CODE_EXPIRATION_MS,
+    );
+
+    user.set({
+      passwordResetCode: hashed,
+      passwordResetCodeExpiresAt: expiration,
+      passwordResetAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
+      lastPasswordResetRequestAt: new Date(),
+    });
+
+    await user.save();
+    await this.emailService.sendPasswordResetEmail(user.email, code);
+  }
+
+  async validateEmailVerificationCode(
+    code: string,
+    user: User,
+  ): Promise<boolean> {
     if (
-      user.emailVerificationCodeExpiresAt &&
+      !user.emailVerificationCode ||
+      !user.emailVerificationCodeExpiresAt ||
       user.emailVerificationCodeExpiresAt < new Date()
     ) {
-      throw new Error('Código expirado');
+      throw new BadRequestException('Código expirado o no disponible');
     }
-
-    if (!user.emailVerificationCode) {
-      throw new Error('Código de verificacion no disponible');
-    }
-
     return await bcrypt.compare(code, user.emailVerificationCode);
+  }
+
+  async validatePasswordResetCode(code: string, user: User): Promise<boolean> {
+    if (
+      !user.passwordResetCode ||
+      !user.passwordResetCodeExpiresAt ||
+      user.passwordResetCodeExpiresAt < new Date()
+    ) {
+      throw new BadRequestException('Código expirado o no disponible');
+    }
+    return await bcrypt.compare(code, user.passwordResetCode);
   }
 }

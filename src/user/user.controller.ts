@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './schemas/user.schema';
@@ -7,6 +15,8 @@ import { EmailVerificationDto } from './dto/email-verification.dto';
 import { Throttle } from '@nestjs/throttler';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { EmailOnlyDto } from './dto/email-only.dto';
+import { JwtAuthGuard } from 'src/auth/jwt/jwt-auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -17,9 +27,10 @@ export class UsersController {
     return await this.userService.findAll();
   }
 
-  @Get(':uuid')
-  async findOne(@Param('uuid') uuid: string): Promise<User> {
-    return await this.userService.findOne(uuid);
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  async findOne(@Req() req): Promise<User> {
+    return await this.userService.findOne(req.user.uuid);
   }
 
   @Post('register')
@@ -30,7 +41,7 @@ export class UsersController {
   }
 
   @Post('verify-email')
-  async verfifyEmail(
+  async verifyEmail(
     @Body() emailVerificationDto: EmailVerificationDto,
   ): Promise<{ message: string }> {
     return await this.userService.verifyEmail(emailVerificationDto);
@@ -38,8 +49,8 @@ export class UsersController {
 
   @Throttle({ default: { limit: 1, ttl: 120 } })
   @Post('resend-verification-code')
-  async resendVerificationCode(@Body() body: { email: string }) {
-    return this.userService.resendVerificationCode(body.email);
+  async resendVerificationCode(@Body() body: EmailOnlyDto) {
+    return this.userService.resendVerificationCode(body);
   }
 
   @Throttle({ default: { limit: 1, ttl: 120 } })
@@ -57,11 +68,9 @@ export class UsersController {
     return await this.userService.resetPassword(dto);
   }
 
-  @Patch(':uuid')
-  async update(
-    @Param('uuid') uuid: string,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    return await this.userService.update(uuid, updateUserDto);
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-profile')
+  async update(@Req() req, @Body() updateUserDto: UpdateUserDto) {
+    return await this.userService.update(req.user.uuid, updateUserDto);
   }
 }

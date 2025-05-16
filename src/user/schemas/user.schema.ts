@@ -40,10 +40,11 @@ export class User extends Document {
   @Prop({ type: Number, default: 5 })
   passwordResetAttempts: number;
 
-  // TODO: Cambiar logica para que no sea igual la verificacion de email y el restablecimiento de contraseña
+  @Prop({ type: Date, default: null })
+  lastEmailVerificationRequestAt: Date | null;
 
   @Prop({ type: Date, default: null })
-  lastVerificationRequestAt: Date | null;
+  lastPasswordResetRequestAt: Date | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
@@ -61,7 +62,11 @@ UserSchema.set('toJSON', {
     delete ret.emailVerificationCode;
     delete ret.emailVerificationCodeExpiresAt;
     delete ret.emailVerificationAttempts;
-    delete ret.lastVerificationAttemptAt;
+    delete ret.passwordResetCode;
+    delete ret.passwordResetCodeExpiresAt;
+    delete ret.passwordResetAttempts;
+    delete ret.lastEmailVerificationRequestAt;
+    delete ret.lastPasswordResetRequestAt;
     return ret;
   },
 });
@@ -75,7 +80,11 @@ UserSchema.set('toObject', {
     delete ret.emailVerificationCode;
     delete ret.emailVerificationCodeExpiresAt;
     delete ret.emailVerificationAttempts;
-    delete ret.lastVerificationAttemptAt;
+    delete ret.passwordResetCode;
+    delete ret.passwordResetCodeExpiresAt;
+    delete ret.passwordResetAttempts;
+    delete ret.lastEmailVerificationRequestAt;
+    delete ret.lastPasswordResetRequestAt;
     return ret;
   },
 });

@@ -17,6 +17,7 @@ import { getConstants } from 'src/common/constants';
 import * as bcrypt from 'bcrypt';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { EmailOnlyDto } from './dto/email-only.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -66,15 +67,17 @@ export class UsersService implements OnModuleInit {
       throw e;
     }
 
-    await this.verificationService.sendAndSaveVerificationCode(newUser);
+    await this.verificationService.sendAndSaveEmailVerificationCode(newUser);
 
     return {
       message: 'Usuario creado. Código de verificación enviado al correo',
     };
   }
 
-  async resendVerificationCode(email: string): Promise<{ message: string }> {
-    const user = await this.userModel.findOne({ email });
+  async resendVerificationCode(
+    dto: EmailOnlyDto,
+  ): Promise<{ message: string }> {
+    const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || user.isEmailVerified) {
       return {
@@ -83,12 +86,12 @@ export class UsersService implements OnModuleInit {
     }
 
     try {
-      this.checkTimeBetweenRequests(user);
+      this.checkTimeBetweenRequests(user.lastEmailVerificationRequestAt);
     } catch (e) {
       throw new BadRequestException(e.response);
     }
 
-    await this.verificationService.sendAndSaveVerificationCode(user);
+    await this.verificationService.sendAndSaveEmailVerificationCode(user);
 
     return {
       message: 'Se ha enviado un nuevo código de verificación',
@@ -99,20 +102,17 @@ export class UsersService implements OnModuleInit {
     const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || user.isEmailVerified) {
-      return { message: 'Código inválido o expirado' };
+      throw new BadRequestException('Código inválido o expirado');
     }
 
     try {
-      await this.validateVerificationCode(user, dto.code);
+      await this.validateEmailVerificationCode(user, dto.code);
     } catch (e) {
       throw new BadRequestException(e.response);
     }
 
-    this.clearVerificationData(user);
-
-    user.set({
-      isEmailVerified: true,
-    });
+    this.clearEmailVerificationData(user);
+    user.set({ isEmailVerified: true });
 
     await user.save();
     return { message: 'Correo verificado correctamente' };
@@ -129,14 +129,14 @@ export class UsersService implements OnModuleInit {
     }
 
     try {
-      this.checkTimeBetweenRequests(user);
+      this.checkTimeBetweenRequests(user.lastPasswordResetRequestAt);
     } catch (e) {
       throw new BadRequestException(e.response);
     }
 
-    await this.verificationService.sendAndSaveVerificationCode(user);
+    await this.verificationService.sendAndSavePasswordResetCode(user);
 
-    user.lastVerificationRequestAt = new Date();
+    user.lastPasswordResetRequestAt = new Date();
     await user.save();
 
     return {
@@ -149,20 +149,17 @@ export class UsersService implements OnModuleInit {
     const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || !user.isEmailVerified) {
-      return { message: 'Código inválido o expirado' };
+      throw new BadRequestException('Código inválido o expirado');
     }
 
     try {
-      await this.validateVerificationCode(user, dto.code);
+      await this.validatePasswordResetCode(user, dto.code);
     } catch (e) {
       throw new BadRequestException(e.response);
     }
 
-    this.clearVerificationData(user);
-
-    user.set({
-      password: await bcrypt.hash(dto.newPassword, 10),
-    });
+    this.clearPasswordResetData(user);
+    user.set({ password: await bcrypt.hash(dto.newPassword, 10) });
 
     await user.save();
 
@@ -197,10 +194,9 @@ export class UsersService implements OnModuleInit {
     return updatedUser;
   }
 
-  private checkTimeBetweenRequests(user: User) {
+  private checkTimeBetweenRequests(lastRequestAt: Date | null) {
     const now = Date.now();
-    const lastRequest = user.lastVerificationRequestAt?.getTime() ?? 0;
-
+    const lastRequest = lastRequestAt?.getTime() ?? 0;
     if (now - lastRequest < this.constants.RESEND_INTERVAL_MS) {
       const wait = Math.ceil(
         (this.constants.RESEND_INTERVAL_MS - (now - lastRequest)) / 1000,
@@ -212,13 +208,16 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  private async validateVerificationCode(user: User, code: string) {
+  private async validateEmailVerificationCode(user: User, code: string) {
     if (user.emailVerificationAttempts === 0) {
       throw new BadRequestException('Se han agotado los intentos');
     }
-
     try {
-      const isValid = await this.verificationService.validateCode(code, user);
+      const isValid =
+        await this.verificationService.validateEmailVerificationCode(
+          code,
+          user,
+        );
       if (!isValid) throw new Error();
     } catch {
       user.set({
@@ -229,11 +228,36 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  private clearVerificationData(user: User) {
+  private async validatePasswordResetCode(user: User, code: string) {
+    if (user.passwordResetAttempts === 0) {
+      throw new BadRequestException('Se han agotado los intentos');
+    }
+    try {
+      const isValid = await this.verificationService.validatePasswordResetCode(
+        code,
+        user,
+      );
+      if (!isValid) throw new Error();
+    } catch {
+      user.set({ passwordResetAttempts: user.passwordResetAttempts - 1 });
+      await user.save();
+      throw new BadRequestException('Código inválido o expirado');
+    }
+  }
+
+  private clearEmailVerificationData(user: User) {
     user.set({
       emailVerificationCode: null,
       emailVerificationCodeExpiresAt: null,
       emailVerificationAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
+    });
+  }
+
+  private clearPasswordResetData(user: User) {
+    user.set({
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
+      passwordResetAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
     });
   }
 }
