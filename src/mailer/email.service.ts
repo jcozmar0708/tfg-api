@@ -10,7 +10,7 @@ export class EmailService {
 
   constructor(private readonly configService: ConfigService) {
     this.constants = getConstants(this.configService);
-    
+
     this.transporter = nodemailer.createTransport({
       host: this.constants.MAIL_HOST,
       port: this.constants.MAIL_PORT,
@@ -36,6 +36,23 @@ export class EmailService {
         <br>
         <h3>Este código expirará en 5 minutos.</h3>
       `,
+    });
+  }
+
+  async sendPasswordResetEmail(to: string, code: string) {
+    const from = this.constants.MAIL_USER;
+
+    await this.transporter.sendMail({
+      from,
+      to,
+      subject: 'Código para restablecer contraseña',
+      html: `
+      <h2>Restablecimiento de contraseña</h2>
+      <p>Tu código para restablecer tu contraseña es:</p>
+      <h1>${code}</h1>
+      <br>
+      <h3>Este código expirará en 5 minutos.</h3>
+    `,
     });
   }
 }
