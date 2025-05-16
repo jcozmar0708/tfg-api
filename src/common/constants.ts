@@ -29,4 +29,9 @@ export const getConstants = (configService: ConfigService) => ({
   UNVERIFIED_USER_EXPIRATION_MS: parseInt(
     getEnvString('UNVERIFIED_USER_EXPIRATION_MS', configService),
   ),
+
+  JWT_SECRET_KEY: getEnvString('JWT_SECRET_KEY', configService),
+  JWT_TOKEN_EXPIRATION_MS: parseInt(
+    getEnvString('JWT_TOKEN_EXPIRATION_MS', configService),
+  ),
 });
