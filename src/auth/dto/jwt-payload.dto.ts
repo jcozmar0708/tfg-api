@@ -7,5 +7,9 @@ export class JwtPayloadDto {
 
   @IsString()
   @IsNotEmpty()
-  sub: string;
+  uuid: string;
+
+  @IsString()
+  @IsNotEmpty()
+  sessionId: string;
 }
