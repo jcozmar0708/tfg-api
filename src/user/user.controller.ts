@@ -5,6 +5,8 @@ import { User } from './schemas/user.schema';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { Throttle } from '@nestjs/throttler';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('users')
 export class UsersController {
@@ -38,6 +40,21 @@ export class UsersController {
   @Post('resend-verification-code')
   async resendVerificationCode(@Body() body: { email: string }) {
     return this.userService.resendVerificationCode(body.email);
+  }
+
+  @Throttle({ default: { limit: 1, ttl: 120 } })
+  @Post('forgot-password')
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    return await this.userService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    return await this.userService.resetPassword(dto);
   }
 
   @Patch(':uuid')

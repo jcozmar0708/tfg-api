@@ -31,6 +31,17 @@ export class User extends Document {
   @Prop({ type: Number, default: 5 })
   emailVerificationAttempts: number;
 
+  @Prop({ type: String, default: null })
+  passwordResetCode: string | null;
+
+  @Prop({ type: Date, default: null })
+  passwordResetCodeExpiresAt: Date | null;
+
+  @Prop({ type: Number, default: 5 })
+  passwordResetAttempts: number;
+
+  // TODO: Cambiar logica para que no sea igual la verificacion de email y el restablecimiento de contraseña
+
   @Prop({ type: Date, default: null })
   lastVerificationRequestAt: Date | null;
 }

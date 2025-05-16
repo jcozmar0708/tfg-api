@@ -15,6 +15,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { VerificationService } from './verification.service';
 import { getConstants } from 'src/common/constants';
 import * as bcrypt from 'bcrypt';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -47,7 +49,7 @@ export class UsersService implements OnModuleInit {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return await this.userModel.findOne({email}).exec();
+    return await this.userModel.findOne({ email }).exec();
   }
 
   async create(dto: CreateUserDto): Promise<{ message: string }> {
@@ -80,17 +82,10 @@ export class UsersService implements OnModuleInit {
       };
     }
 
-    const now = Date.now();
-    const lastRequest = user.lastVerificationRequestAt?.getTime() ?? 0;
-
-    if (now - lastRequest < this.constants.RESEND_INTERVAL_MS) {
-      const wait = Math.ceil(
-        (this.constants.RESEND_INTERVAL_MS - (now - lastRequest)) / 1000,
-      );
-      throw new BadRequestException({
-        error: 'WAIT_TIME_REQUIRED',
-        waitTimeSeconds: wait,
-      });
+    try {
+      this.checkTimeBetweenRequests(user);
+    } catch (e) {
+      throw new BadRequestException(e.response);
     }
 
     await this.verificationService.sendAndSaveVerificationCode(user);
@@ -100,40 +95,78 @@ export class UsersService implements OnModuleInit {
     };
   }
 
-  async verifyEmail({
-    email,
-    code,
-  }: EmailVerificationDto): Promise<{ message: string }> {
-    const user = await this.userModel.findOne({ email });
+  async verifyEmail(dto: EmailVerificationDto): Promise<{ message: string }> {
+    const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || user.isEmailVerified) {
       return { message: 'Código inválido o expirado' };
     }
 
-    if (user.emailVerificationAttempts === 0) {
-      throw new BadRequestException('Se han agotado los intentos');
+    try {
+      await this.validateVerificationCode(user, dto.code);
+    } catch (e) {
+      throw new BadRequestException(e.response);
     }
 
-    try {
-      const isValid = await this.verificationService.validateCode(code, user);
-      if (!isValid) throw new Error();
-    } catch {
-      user.set({
-        emailVerificationAttempts: user.emailVerificationAttempts - 1,
-      });
-      await user.save();
-      throw new BadRequestException('Código inválido o expirado');
-    }
+    this.clearVerificationData(user);
 
     user.set({
       isEmailVerified: true,
-      emailVerificationCode: null,
-      emailVerificationCodeExpiresAt: null,
-      emailVerificationAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
     });
 
     await user.save();
     return { message: 'Correo verificado correctamente' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const user = await this.userModel.findOne({ email: dto.email });
+
+    if (!user || !user.isEmailVerified) {
+      return {
+        message:
+          'Se ha enviado un código de verificación para recuperar tu contraseña',
+      };
+    }
+
+    try {
+      this.checkTimeBetweenRequests(user);
+    } catch (e) {
+      throw new BadRequestException(e.response);
+    }
+
+    await this.verificationService.sendAndSaveVerificationCode(user);
+
+    user.lastVerificationRequestAt = new Date();
+    await user.save();
+
+    return {
+      message:
+        'Se ha enviado un código de verificación para recuperar tu contraseña',
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const user = await this.userModel.findOne({ email: dto.email });
+
+    if (!user || !user.isEmailVerified) {
+      return { message: 'Código inválido o expirado' };
+    }
+
+    try {
+      await this.validateVerificationCode(user, dto.code);
+    } catch (e) {
+      throw new BadRequestException(e.response);
+    }
+
+    this.clearVerificationData(user);
+
+    user.set({
+      password: await bcrypt.hash(dto.newPassword, 10),
+    });
+
+    await user.save();
+
+    return { message: 'Contraseña actualizada correctamente' };
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -162,5 +195,45 @@ export class UsersService implements OnModuleInit {
     }
 
     return updatedUser;
+  }
+
+  private checkTimeBetweenRequests(user: User) {
+    const now = Date.now();
+    const lastRequest = user.lastVerificationRequestAt?.getTime() ?? 0;
+
+    if (now - lastRequest < this.constants.RESEND_INTERVAL_MS) {
+      const wait = Math.ceil(
+        (this.constants.RESEND_INTERVAL_MS - (now - lastRequest)) / 1000,
+      );
+      throw new BadRequestException({
+        error: 'WAIT_TIME_REQUIRED',
+        waitTimeSeconds: wait,
+      });
+    }
+  }
+
+  private async validateVerificationCode(user: User, code: string) {
+    if (user.emailVerificationAttempts === 0) {
+      throw new BadRequestException('Se han agotado los intentos');
+    }
+
+    try {
+      const isValid = await this.verificationService.validateCode(code, user);
+      if (!isValid) throw new Error();
+    } catch {
+      user.set({
+        emailVerificationAttempts: user.emailVerificationAttempts - 1,
+      });
+      await user.save();
+      throw new BadRequestException('Código inválido o expirado');
+    }
+  }
+
+  private clearVerificationData(user: User) {
+    user.set({
+      emailVerificationCode: null,
+      emailVerificationCodeExpiresAt: null,
+      emailVerificationAttempts: this.constants.MAX_VERIFICATION_ATTEMPTS,
+    });
   }
 }
