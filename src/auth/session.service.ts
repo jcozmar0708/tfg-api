@@ -25,7 +25,6 @@ export class SessionService {
   }
 
   async revoke(sessionId: string): Promise<void> {
-    console.log(sessionId)
     await this.sessionModel.updateOne({ sessionId }, { revoked: true });
   }
 
