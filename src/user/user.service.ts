@@ -54,6 +54,22 @@ export class UsersService implements OnModuleInit {
   }
 
   async create(dto: CreateUserDto): Promise<{ message: string }> {
+    let existingUser = await this.findByEmail(dto.email);
+
+    if (existingUser && !existingUser.isEmailVerified) {
+      existingUser.set({
+        fullName: dto.fullName,
+        phone: dto.phone,
+        password: await bcrypt.hash(dto.password, 10),
+      });
+
+      await existingUser.save();
+
+      return {
+        message: 'Usuario creado. Código de verificación enviado al correo',
+      };
+    }
+
     const newUser = new this.userModel(dto);
 
     try {
@@ -98,7 +114,7 @@ export class UsersService implements OnModuleInit {
     };
   }
 
-  async verifyEmail(dto: EmailVerificationDto): Promise<{ message: string }> {
+  async verifyEmail(dto: EmailVerificationDto): Promise<{ success: boolean }> {
     const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || user.isEmailVerified) {
@@ -115,7 +131,7 @@ export class UsersService implements OnModuleInit {
     user.set({ isEmailVerified: true });
 
     await user.save();
-    return { message: 'Correo verificado correctamente' };
+    return { success: true };
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {

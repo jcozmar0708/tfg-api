@@ -43,7 +43,7 @@ export class UsersController {
   @Post('verify-email')
   async verifyEmail(
     @Body() emailVerificationDto: EmailVerificationDto,
-  ): Promise<{ message: string }> {
+  ): Promise<{ success: boolean }> {
     return await this.userService.verifyEmail(emailVerificationDto);
   }
 

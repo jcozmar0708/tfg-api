@@ -51,9 +51,9 @@ export class AuthService {
     };
 
     return {
-      accessToken: this.jwtService.sign(payload, {secret: this.constants.JWT_SECRET_KEY}),
-      email: user.email,
-      uuid: user.uuid,
+      accessToken: this.jwtService.sign(payload, {
+        secret: this.constants.JWT_SECRET_KEY,
+      }),
     };
   }
 
