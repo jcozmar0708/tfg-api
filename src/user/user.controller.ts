@@ -64,7 +64,7 @@ export class UsersController {
   @Post('reset-password')
   async resetPassword(
     @Body() dto: ResetPasswordDto,
-  ): Promise<{ message: string }> {
+  ): Promise<{ success: boolean }> {
     return await this.userService.resetPassword(dto);
   }
 

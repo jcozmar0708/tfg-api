@@ -161,7 +161,7 @@ export class UsersService implements OnModuleInit {
     };
   }
 
-  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+  async resetPassword(dto: ResetPasswordDto): Promise<{ success: boolean }> {
     const user = await this.userModel.findOne({ email: dto.email });
 
     if (!user || !user.isEmailVerified) {
@@ -179,7 +179,7 @@ export class UsersService implements OnModuleInit {
 
     await user.save();
 
-    return { message: 'Contraseña actualizada correctamente' };
+    return { success: true };
   }
 
   @Cron(CronExpression.EVERY_HOUR)
