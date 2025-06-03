@@ -7,6 +7,8 @@ import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { getConstants } from 'src/common/constants';
 import { SessionService } from './session.service';
+import * as jwt from 'jsonwebtoken';
+import { GroupsService } from 'src/group/group.service';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +16,7 @@ export class AuthService {
 
   constructor(
     private readonly usersService: UsersService,
+    private readonly groupsService: GroupsService,
     private readonly jwtService: JwtService,
     private readonly sessionService: SessionService,
     private readonly configService: ConfigService,
@@ -37,7 +40,7 @@ export class AuthService {
     throw new UnauthorizedException('No autorizado');
   }
 
-  async login(user: any) {
+  async login(user: any, inviteToken?: string) {
     const expiration = new Date(
       Date.now() + this.constants.JWT_TOKEN_EXPIRATION_MS,
     );
@@ -49,6 +52,30 @@ export class AuthService {
       uuid: user.uuid,
       sessionId: session.sessionId,
     };
+
+    if (inviteToken) {
+      try {
+        const decoded: any = jwt.verify(
+          inviteToken,
+          this.constants.JWT_SECRET_KEY,
+        );
+
+        if (decoded?.to !== user.email)
+          throw new UnauthorizedException(
+            'El token no pertenece a este usuario',
+          );
+
+        if (decoded.type !== 'invite')
+          throw new UnauthorizedException('Tipo de token no válido');
+
+        await this.groupsService.addUserToGroupByInviteCode(
+          user.email,
+          decoded.inviteCode,
+        );
+      } catch (err) {
+        console.error('Error procesando el inviteToken:', err);
+      }
+    }
 
     return {
       accessToken: this.jwtService.sign(payload, {

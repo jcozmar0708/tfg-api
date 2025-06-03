@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../user/user.module';
 import { JwtStrategy } from './jwt/jwt.strategy';
 import { SessionModule } from './session.module';
+import { GroupsModule } from 'src/group/group.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SessionModule } from './session.module';
       }),
     }),
     UsersModule,
+    GroupsModule,
     PassportModule,
     SessionModule,
   ],

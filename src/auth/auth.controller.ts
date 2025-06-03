@@ -18,7 +18,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     const user = await this.authService.validateUser(loginDto);
-    return this.authService.login(user);
+    return this.authService.login(user, loginDto.inviteToken);
   }
 
   @UseGuards(JwtAuthGuard)
