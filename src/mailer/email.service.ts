@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { getConstants } from 'src/common/constants';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class EmailService {
@@ -52,6 +53,39 @@ export class EmailService {
       <h1>${code}</h1>
       <br>
       <h3>Este código expirará en 5 minutos.</h3>
+    `,
+    });
+  }
+
+  async sendGroupInvitationEmail(
+    to: string,
+    groupName: string,
+    inviteCode: string,
+    invitedBy: string,
+  ) {
+    const from = this.constants.MAIL_USER;
+
+    const token = jwt.sign(
+      { inviteCode, to, type: 'invite' },
+      this.constants.JWT_SECRET_KEY,
+      {
+        expiresIn: '2d',
+      },
+    );
+
+    const link = `${this.constants.FRONT_URL}/auth/login?inviteToken=${token}`;
+
+    await this.transporter.sendMail({
+      from,
+      to,
+      subject: `Te han invitado al grupo "${groupName}"`,
+      html: `
+      <h2>Has sido invitado al grupo "${groupName}"</h2>
+      <p><strong>${invitedBy}</strong> te ha invitado a unirte a este grupo.</p>
+      <p>Para unirte, haz clic en el siguiente enlace:</p>
+      <a href="${link}" target="_blank" style="font-size:18px; color: blue;">${link}</a>
+      <br/><br/>
+      <small>Si no tienes cuenta, regístrate primero. Serás añadido automáticamente al iniciar sesión.</small>
     `,
     });
   }
