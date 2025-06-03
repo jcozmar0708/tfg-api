@@ -1,48 +1,69 @@
 import {
-  Body,
   Controller,
-  Delete,
+  Post,
+  Body,
   Get,
   Param,
+  UseGuards,
+  Req,
+  Delete,
   Patch,
-  Post,
 } from '@nestjs/common';
 import { GroupsService } from './group.service';
-import { Group } from './schemas/group.schema';
+import { JwtAuthGuard } from 'src/auth/jwt/jwt-auth.guard';
 import { CreateGroupDto } from './dto/create-group.dto';
-import { UpdateGroupDto } from './dto/update-group.dto';
+import { AddUsersDto } from './dto/add-users.dto';
+import { NameOnlyDto } from './dto/name-only.dto';
 
 @Controller('groups')
+@UseGuards(JwtAuthGuard)
 export class GroupsController {
   constructor(private readonly groupService: GroupsService) {}
 
   @Get()
-  async findAll(): Promise<Group[]> {
-    return await this.groupService.findAll();
+  async getUserGroups(@Req() req) {
+    return this.groupService.getUserGroups(req.user.email);
   }
 
   @Get(':uuid')
-  async findOne(@Param('uuid') uuid: string): Promise<Group> {
-    return await this.groupService.findOne(uuid);
+  async getGroupDetail(@Param('uuid') uuid: string) {
+    return this.groupService.getGroupById(uuid);
   }
 
   @Post()
-  async create(@Body() createGroupDto: CreateGroupDto): Promise<Group> {
-    return await this.groupService.create(createGroupDto);
+  async createGroup(@Req() req, @Body() body: CreateGroupDto) {
+    return this.groupService.createGroup(body, req.user.email);
+  }
+
+  @Post('join/:code')
+  async joinGroupByInviteCode(@Req() req, @Param('code') code: string) {
+    return this.groupService.addUserToGroupByInviteCode(req.user.email, code);
+  }
+
+  @Post(':uuid/add-user')
+  async addUserToGroup(
+    @Param('uuid') groupUUID: string,
+    @Req() req,
+    @Body() body: AddUsersDto,
+  ) {
+    return this.groupService.addUsersToGroup(groupUUID, req.user.email, body);
   }
 
   @Patch(':uuid')
-  async update(
-    @Param('uuid') uuid: string,
-    @Body() updateGroupDto: UpdateGroupDto,
+  async updateGroupName(
+    @Param('uuid') groupUUID: string,
+    @Req() req,
+    @Body() body: NameOnlyDto,
   ) {
-    return await this.groupService.update(uuid, updateGroupDto);
+    return this.groupService.updateGroupName(groupUUID, req.user.email, body);
   }
 
-  @Delete(':uuid')
-  async delete(@Param('uuid') uuid: string) {
-    return await this.groupService.delete(uuid);
+  @Delete(':uuid/remove-user/:email')
+  async removeUser(
+    @Param('uuid') uuid: string,
+    @Param('email') email: string,
+    @Req() req,
+  ) {
+    return this.groupService.removeUserFromGroup(uuid, req.user.email, email);
   }
 }
-
-// TODO: Seguir haciendo el controller
