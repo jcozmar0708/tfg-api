@@ -12,6 +12,9 @@ const getEnvString = (key: string, configService: ConfigService): string => {
 export const getConstants = (configService: ConfigService) => ({
   PORT: parseInt(getEnvString('PORT', configService)),
 
+  CORS_ORIGIN: getEnvString('CORS_ORIGIN', configService),
+  FRONT_URL: getEnvString('FRONT_URL', configService),
+
   MAIL_HOST: getEnvString('MAIL_HOST', configService),
   MAIL_PORT: parseInt(getEnvString('MAIL_PORT', configService)),
   MAIL_USER: getEnvString('MAIL_USER', configService),
