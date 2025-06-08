@@ -73,7 +73,7 @@ export class EmailService {
       },
     );
 
-    const link = `${this.constants.FRONT_URL}/auth/login?inviteToken=${token}`;
+    const link = `${this.constants.FRONT_URL}/login?inviteToken=${token}`;
 
     await this.transporter.sendMail({
       from,
