@@ -43,7 +43,7 @@ export class UsersService implements OnModuleInit {
     const user = await this.userModel.findById(uuid).exec();
 
     if (!user) {
-      throw new NotFoundException(`User with uuid ${uuid} not found`);
+      throw new NotFoundException(`Usuario con uuid ${uuid} no encontrado`);
     }
 
     return user;
@@ -195,6 +195,10 @@ export class UsersService implements OnModuleInit {
   }
 
   async update(uuid: string, updateUserDto: UpdateUserDto): Promise<User> {
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+    
     const updatedUser = await this.userModel.findByIdAndUpdate(
       uuid,
       updateUserDto,

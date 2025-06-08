@@ -59,6 +59,7 @@ UserSchema.set('toJSON', {
   transform: (_, ret) => {
     delete ret._id;
     delete ret.id;
+    delete ret.password;
     delete ret.emailVerificationCode;
     delete ret.emailVerificationCodeExpiresAt;
     delete ret.emailVerificationAttempts;
@@ -77,6 +78,7 @@ UserSchema.set('toObject', {
   transform: (_, ret) => {
     delete ret._id;
     delete ret.id;
+    delete ret.password;
     delete ret.emailVerificationCode;
     delete ret.emailVerificationCodeExpiresAt;
     delete ret.emailVerificationAttempts;
