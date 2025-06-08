@@ -8,17 +8,22 @@ import {
   Req,
   Delete,
   Patch,
+  BadRequestException,
 } from '@nestjs/common';
 import { GroupsService } from './group.service';
 import { JwtAuthGuard } from 'src/auth/jwt/jwt-auth.guard';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { AddUsersDto } from './dto/add-users.dto';
 import { NameOnlyDto } from './dto/name-only.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
 export class GroupsController {
-  constructor(private readonly groupService: GroupsService) {}
+  constructor(
+    private readonly groupService: GroupsService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Get()
   async getUserGroups(@Req() req) {
@@ -37,7 +42,17 @@ export class GroupsController {
 
   @Post('join/:code')
   async joinGroupByInviteCode(@Req() req, @Param('code') code: string) {
-    return this.groupService.addUserToGroupByInviteCode(req.user.email, code);
+    try {
+      const payload = this.jwtService.verify(code);
+      const inviteCode = payload.inviteCode;
+
+      return this.groupService.addUserToGroupByInviteCode(
+        req.user.email,
+        inviteCode,
+      );
+    } catch {
+      throw new BadRequestException('Token de invitación no válido o expirado');
+    }
   }
 
   @Post(':uuid/add-user')

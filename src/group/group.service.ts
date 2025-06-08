@@ -38,7 +38,7 @@ export class GroupsService {
     await group.save();
 
     const invitedEmails = (body.emails ?? []).filter(
-      (email) => email !== creator,
+      (email) => email && email.trim() !== '' && email !== creator,
     );
 
     for (const email of invitedEmails) {
@@ -93,28 +93,28 @@ export class GroupsService {
     groupUUID: string,
     currentUserEmail: string,
     body: AddUsersDto,
-  ): Promise<Group> {
+  ): Promise<{ sent: string[] }> {
     const group = await this.groupModel.findById(groupUUID);
     if (!group) throw new NotFoundException('Grupo no encontrado');
 
     if (group.creator !== currentUserEmail)
       throw new ForbiddenException('Solo el creador puede añadir usuarios');
 
+    const sentInvitations: string[] = [];
+
     for (const email of body.emails) {
       if (!group.users.includes(email)) {
-        group.users.push(email);
-
         await this.emailService.sendGroupInvitationEmail(
           email,
           group.name,
           group.inviteCode,
           currentUserEmail,
         );
+
+        sentInvitations.push(email);
       }
     }
-
-    await group.save();
-    return group;
+    return { sent: sentInvitations };
   }
 
   async updateGroupName(
@@ -127,9 +127,7 @@ export class GroupsService {
     if (!group) throw new NotFoundException('Grupo no encontrado');
 
     if (group.creator !== currentUserEmail)
-      throw new ForbiddenException(
-        'Solo el creador puede cambiar el nombre del grupo',
-      );
+      throw new ForbiddenException('Solo el creador puede modificar el grupo');
 
     group.name = body.name;
     await group.save();
@@ -149,7 +147,7 @@ export class GroupsService {
     if (currentUserEmail === userEmailToRemove) {
       if (group.creator === currentUserEmail) {
         await this.groupModel.findByIdAndDelete(groupUUID);
-        return true
+        return true;
       }
 
       group.users = group.users.filter((email) => email !== userEmailToRemove);
