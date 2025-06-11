@@ -37,4 +37,8 @@ export const getConstants = (configService: ConfigService) => ({
   JWT_TOKEN_EXPIRATION_MS: parseInt(
     getEnvString('JWT_TOKEN_EXPIRATION_MS', configService),
   ),
+
+  PAYPAL_CLIENT_ID: getEnvString('PAYPAL_CLIENT_ID', configService),
+  PAYPAL_SECRET: getEnvString('PAYPAL_SECRET', configService),
+  PAYPAL_API: getEnvString('PAYPAL_API', configService),
 });
