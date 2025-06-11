@@ -87,8 +87,4 @@ export class AuthService {
   async logout(sessionId: string) {
     await this.sessionService.revoke(sessionId);
   }
-
-  async logoutAll(uuid: string): Promise<void> {
-    await this.sessionService.revokeAllForUser(uuid);
-  }
 }

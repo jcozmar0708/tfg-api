@@ -27,11 +27,4 @@ export class AuthController {
   async logout(@Req() req) {
     await this.authService.logout(req.user.sessionId);
   }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('logout-all')
-  @HttpCode(204)
-  async logoutAll(@Req() req) {
-    await this.authService.logoutAll(req.user.uuid);
-  }
 }
